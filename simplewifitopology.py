@@ -88,9 +88,15 @@ def topology():
     info("*** Configuring wifi nodes\n")
     net.configureWifiNodes()
 
-    info("*** Associating Stations\n")
-    net.addLink(sta1, ap1)
-    net.addLink(sta2, ap1)
+#    info("*** Associating Stations\n")
+#    net.addLink(sta1, ap1)
+#    net.addLink(sta2, ap1)
+
+    ################   Wireless AP Interface   ##########################
+    print ("*** Adding Link")
+    net.addLink(ap1, sta1)
+    net.addLink(sta2, ap1, bw=10, loss=5)
+    net.addLink(sta3, ap1, bw=10, loss=5)
 
     info("*** Starting network\n")
     net.build()
