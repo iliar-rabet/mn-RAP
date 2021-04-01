@@ -7,7 +7,7 @@ from mininet.log import setLogLevel, info
 from mn_wifi.cli import CLI
 from mn_wifi.net import Mininet_wifi
 from mininet.nodelib import NAT
-
+from mininet.node import RemoteController
 def topology():
     "Create a network."
     net = Mininet_wifi()
@@ -67,8 +67,9 @@ def topology():
     h6 = net.addHost('h6', ip='192.168.0.6', mac='AA:AA:AA:AA:AA:06',
                      defaultRoute='via 192.168.0.224')
 
-    c0 = net.addController('c0')
-
+#    c0 = net.addController('c0')
+    c1 = net.addController('c1', controller=RemoteController, ip='0.0.0.0',
+                            protocol='tcp',port=6633)
    #####################   Link devices to Switch    ######################
     net.addLink(ap1, s0)
     net.addLink(h1, s0)
@@ -96,19 +97,19 @@ def topology():
 
     ######################   Create NAT for Internet   ####################
     nat = net.addHost( 'nat', cls=NAT, ip='192.168.0.224',
-                       mac='AA:AA:AA:AA:AA:AA',
+                        mac='AA:AA:AA:AA:AA:AA',
                        subnet='192.168.0.0/24', inNamespace=False)
     net.addLink(nat, s0)
 
 
     ###########################     Create RAP        ########################
     nat1=net.addHost('nat1', cls=NAT, ip='192.168.0.22',
-                                  mac='AA:CC:CC:CC:CC:CC',
-                                  subnet='10.0.0.0/24', inNameSpace=False,
-                                  inetIntf='nat1-eth0', localIntf='nat1-eth1',
-                                  defaultRoute='via 192.168.0.224')
+                                 mac='AA:CC:CC:CC:CC:CC',
+                                 subnet='10.0.0.0/24', inNameSpace=False,
+                                 inetIntf='nat1-eth0', localIntf='nat1-eth1',
+                                 defaultRoute='via 192.168.0.224')
     net.addLink(nat1,s0)
-    net.addLink(ap3, nat1, bw=100)
+    net.addLink(ap3, nat1)
 
     ########################   Add RAP Interface    ########################
     nat1.setIP('10.0.0.22/8', intf='nat1-eth1')
@@ -116,8 +117,8 @@ def topology():
 
     info("*** Starting network\n")
     net.build()
-    c0.start()
-    ap1.start([c0])
+ #   c0.start()
+    ap1.start([c1])
 
     if '-v' not in sys.argv:
         ap1.cmd('ovs-ofctl add-flow ap1 "priority=0,arp,in_port=1,'
