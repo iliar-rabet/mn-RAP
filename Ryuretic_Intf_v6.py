@@ -31,28 +31,24 @@ class Ryuretic_coupler(coupler):
 		fields, ops = self.default_Field_Ops(pkt)
 		self.install_field_ops(pkt,fields,ops)
 
-	#def handle_arp(self,pkt):
-		#print "-------------------------------------------------"
-		#print "Handle ARP: ",pkt['srcmac'],"->",pkt['dstmac']
-		#print "Handle ARP: ",pkt['srcip'],"->",pkt['dstip']
-		#fields, ops = self.respond_to_arp(pkt)
-		##Determin if mac or port has a status
-		##pkt_status = self.check_net_tbl(pkt['srcmac'],pkt['inport'])
-		##print pkt_status   
-		#self.install_field_ops(pkt,fields,ops)
 		
 	def handle_arp(self,pkt):
 		print ("--------------------------------------------------")
 		print("Handle ARP: ",pkt['srcmac'],"->",pkt['dstmac'])
 		print("Handle ARP: ",pkt['srcip'],"->",pkt['dstip'])
 		fields, ops = self.respond_to_arp(pkt)
+                ##Determine if mac or port has a status
+		##pkt_status = self.check_net_tbl(pkt['srcmac'],pkt['inport'])
+		##print pkt_status   
+		#self.install_field_ops(pkt,fields,ops)
 		self.install_field_ops(pkt,fields,ops)
 		
+
 	def handle_ip(self,pkt):
-		print("-------------------------------------------------")
-          #      print ( "Handle IP" ) 
-		fields, ops = self.default_Field_Ops(pkt) 
+		print("Handle IP")
+		fields, ops = self.default_Field_Ops(pkt)
 		self.install_field_ops(pkt,fields,ops)
+
 
 	def handle_icmp(self,pkt):
 		print("----------------------------------------------------")
@@ -62,9 +58,9 @@ class Ryuretic_coupler(coupler):
 		self.install_field_ops(pkt, fields, ops)
 
 	def handle_tcp(self,pkt):
-		#print "-------------------------------------------------------------"
-		#print "Handle TCP: ",pkt['srcmac'],"->",pkt['dstmac']
-		#print "Handle TCP: ",pkt['srcip'],"->",pkt['dstip']
+		print("--------------------------------------------------")
+		print("Handle TCP: ",pkt['srcmac'],"->",pkt['dstmac'])
+		print("Handle TCP: ",pkt['srcip'],"->",pkt['dstip'])
 		#print "Handle TCP: ",pkt['srcport'],"->",pkt['dstport']
 		pkt_status = self.check_ip_tbl(pkt)
 		if pkt_status == 'test': #test src and dest
@@ -94,7 +90,38 @@ class Ryuretic_coupler(coupler):
 		#Uses ipTbl, tcp_tbl, and t_agent 	
 		fields,ops = self.default_Field_Ops(pkt)
 			
-#152-182
+		if (pkt['srcip']) in self.ipTbl:
+			if self.ipTbl[pkt['srcip']] in ['test','deny']:
+				print("ipTbl Contents", self.ipTbl)
+				key = (pkt['srcip'],pkt['srcport'])
+				print("Key is : ", key)
+				self.tcp_tbl[key] = {'dstip':pkt['dstip'],'dstmac':pkt['dstmac'],
+						 'dstport':pkt['dstport']}
+				fields.update({'srcmac':pkt['srcmac'],'srcip':pkt['srcip']})
+				fields.update({'dstmac':self.t_agent['mac'],'dstip':self.t_agent['ip']})
+				#if pkt['dstport'] == 443:
+					#fields['dstport'] = 80
+				ops = {'hard_t':None, 'idle_t':None, 'priority':100,\
+					'op':'mod', 'newport':self.t_agent['port']}
+				print("TCP Table: ", self.tcp_tbl[key])
+				
+		elif (pkt['dstip']) in self.ipTbl:
+			print("Returning to ", pkt['dstip'])
+			if self.ipTbl[pkt['dstip']] in ['test','deny']:
+				print("ipTbl Contents", self.ipTbl)
+				key = (pkt['dstip'],pkt['dstport'])
+				print("Key and table: ", key, ' ', self.tcp_tbl[key])
+				fields.update({'srcmac':self.tcp_tbl[key]['dstmac'],
+				   'srcip':self.tcp_tbl[key]['dstip']})
+				#if self.tcp_tbl[key]['dstport'] == 443:
+					#fields.update({'srcport':443})
+				fields.update({'dstmac':pkt['dstmac'], 'dstip':pkt['dstip']})
+				ops = {'hard_t':None, 'idle_t':None, 'priority':100,\
+					'op':'mod', 'newport':None}	
+				#self.tcp_tbl.pop(key)
+				#print "TCP Table: ", self.tcp_tbl
+		return fields, ops	
+
 
 	# Add flag to policyTbl, macTbl, portTbl
 	def flagHost(self,pkt,flag):
@@ -119,7 +146,7 @@ class Ryuretic_coupler(coupler):
 	def handle_udp(self,pkt):
 		print("---------------------------------------------------")
 		print("Handle UDP: ",pkt['srcmac'],"->",pkt['dstmac'])
-#		print("Handle UDP: ",pkt['srcip'],'->',pkt['dstip'])
+	#	print("Handle UDP: ",pkt['srcip'],"->",pkt['dstip'])
 		#Added to build MAC and port associations	
 		pkt_status = self.check_ip_tbl(pkt)
 		if pkt_status == 'test': #test src and dest
@@ -144,7 +171,7 @@ class Ryuretic_coupler(coupler):
 		print("Redirect_DNS: ")
 		#Uses macTbl, dns_tbl, and t_agent 	
 		fields,ops = self.default_Field_Ops(pkt)
-		if self.ipTbl.haskey(pkt['srcip']): #######3
+		if (pkt['srcip']) in self.ipTbl: 
 			if self.ipTbl[pkt['srcip']]== 'test':
 				key = (pkt['srcip'],pkt['srcport'])
 				print(key)
@@ -155,7 +182,7 @@ class Ryuretic_coupler(coupler):
 				ops = {'hard_t':None, 'idle_t':None, 'priority':100,\
 					'op':'mod', 'newport':self.t_agent['port']}
 
-		elif self.ipTbl.has_key(pkt['dstip']):
+		elif (pkt['dstip']) in self.ipTbl:
 			if self.ipTbl[pkt['dstip']]== 'test':
 				key = (pkt['dstip'],pkt['dstport'])
 				print(key)
@@ -171,12 +198,12 @@ class Ryuretic_coupler(coupler):
 
 	#Check status of port and mac. 
 	def check_ip_tbl(self,pkt):
-		#print "Check_ip_tbl:"
-#		srcip,dstip = pkt['srcip'],pkt['dstip']
-		if self.ipTbl.haskey(srcip):
+		print("Check_ip_tbl:")
+		srcip,dstip = pkt['srcip'],pkt['dstip']
+		if (srcip) in self.ipTbl:
 			#print "Found: ", srcip,'->', self.ipTbl[srcip]		 
 			return self.ipTbl[srcip]
-		elif self.ipTbl.has_key(dstip):
+		elif (dstip) in self.ipTbl:
 			#print "Found: ", dstip,'->', self.ipTbl[dstip]		 
 			return self.ipTbl[dstip]
 		else:
@@ -235,34 +262,34 @@ class Ryuretic_coupler(coupler):
 
 
 		if bits == 20:
-			if self.tta.has_key(send):
+			if (send) in self.tta:
 				self.tta[send]['stage'] = 0
-			elif self.tta.has_key(arrive):
+			elif (arrive) in self.tta:
 				#print pkt
 				self.tta[arrive]['stage'] = 0
 			return fields, ops
 			
 		if bits == 2:
-			if self.tta.has_key(send):
+			if (send) in self.tta:
 				self.tta[send].update({'inport':inport,'stage':1})
 			else:
 				self.tta.update({send:{'inport':inport,'stage':1}})
 			return fields, ops
 
 		if bits == 18:
-			if self.tta.has_key(arrive):
+			if (arrive) in self.tta:
 				if self.tta[arrive]['stage']==1:
 					self.tta[arrive].update({'syn':t_in,'stage':2})
 			return fields,ops
 
 
 		if bits == 16:
-			if self.tta.has_key(send):
+			if (send) in self.tta:
 				if self.tta[send]['stage']==2:
 					tta = t_in - self.tta[send]['syn']
 					self.tta[send].update({'stage':3, 'ack':t_in, 'tta':tta})
 					#print '** Calc TTA :', tta
-					if self.port_AV.has_key(self.tta[send]['inport']):
+					if (self.tta[send]['inport']) in self.port_AV:
 						portAV = ((self.port_AV[self.tta[send]['inport']] * \
 								   9) + tta)/10
 						self.port_AV[self.tta[send]['inport']] = portAV
@@ -286,9 +313,9 @@ class Ryuretic_coupler(coupler):
 
 		if bits == 17:
 			print('Port Averages: ', self.port_AV)
-			if self.tta.has_key(send):
+			if (send) in self.tta:
 				del self.tta[send]
-			elif self.tta.has_key(arrive):
+			elif (arrive) in self.tta:
 				del self.tta[arrive]
 			return fields, ops
 
@@ -344,7 +371,7 @@ class Ryuretic_coupler(coupler):
 		print('Respond to Arp:', pkt['srcip'],'->',pkt['dstip'])
 		fields, ops = self.default_Field_Ops(pkt)
 		#Added to build MAC and port associations
-		if not self.macTbl.has_key(pkt['srcmac']):
+		if (pkt['srcmac']) not in self.macTbl:
 			self.macTbl[pkt['srcmac']] = {'port':pkt['inport'], 'stat':'unk'}
 		if pkt['dstip'] == self.cntrl['ip']:
 			print("Message to Controller")
@@ -372,15 +399,15 @@ class Ryuretic_coupler(coupler):
 		
 		def remove_keyID(keyID):
 			print("Policy Table Contents: ", self.policyTbl)
-			if self.policyTbl.has_key(keyID):
+			if (keyID) in self.policyTbl:
 				srcmac, inport, srcip = get_fields(keyID)
-				if self.macTbl.has_key(srcmac):
+				if (srcmac)in self.macTbl:
 					print("Removing MAC", srcmac)
 					self.macTbl.pop(srcmac)
-				if self.portTbl.has_key(inport):
+				if (inport) in self.portTbl:
 					print("Removing Port", inport)
 					self.portTbl.pop(inport)
-				if self.ipTbl.haskey(srcip):
+				if (srcip) in self.ipTbl:
 					print("Removing IP", srcip)
 					self.ipTbl.pop(srcip)					
 				self.policyTbl.pop(keyID)
@@ -422,8 +449,8 @@ class Ryuretic_coupler(coupler):
 				remove_keyID(keyID)
 			elif action == 'r':
 				print("Validating result")
-				print("Key present?", self.policyTbl.has_key(keyID))
-				if self.policyTbl.has_key(keyID):
+				print("Key present?", (keyID) in self.policyTbl)
+				if (keyID) in self.policyTbl:
 					print("Test Result is: ", result)
 					if result == 'P':
 						print("Removing keyID")
