@@ -8,6 +8,8 @@ from mn_wifi.cli import CLI
 from mn_wifi.net import Mininet_wifi
 from mininet.nodelib import NAT
 from mininet.node import RemoteController
+
+
 def topology():
     "Create a network."
     net = Mininet_wifi()
@@ -26,7 +28,7 @@ def topology():
 
     sta1 = net.addStation('sta1', mac='AA:BB:BB:BB:BB:01',
                            defaultRoute='via 192.168.0.224',
-                           ip='192.168.0.11/240',
+                           ip='192.168.0.11/24',
                            position='10,40,0')
 
     sta2 = net.addStation('sta2', mac='AA:BB:BB:BB:BB:02',
@@ -117,8 +119,11 @@ def topology():
 
     info("*** Starting network\n")
     net.build()
- #   c0.start()
+#   c0.start()
+    c1.start()
     ap1.start([c1])
+    ap3.start([c1])
+    s0.start([c1])
 
     if '-v' not in sys.argv:
         ap1.cmd('ovs-ofctl add-flow ap1 "priority=0,arp,in_port=1,'
